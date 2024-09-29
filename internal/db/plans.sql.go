@@ -39,7 +39,7 @@ DELETE FROM plans
 WHERE id = $1
 `
 
-func (q *Queries) DeletePlan(ctx context.Context, id int32) error {
+func (q *Queries) DeletePlan(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deletePlan, id)
 	return err
 }
@@ -48,7 +48,7 @@ const getPlan = `-- name: GetPlan :one
 SELECT id, name, cost, employee_limit FROM plans WHERE id = $1
 `
 
-func (q *Queries) GetPlan(ctx context.Context, id int32) (Plan, error) {
+func (q *Queries) GetPlan(ctx context.Context, id int64) (Plan, error) {
 	row := q.db.QueryRow(ctx, getPlan, id)
 	var i Plan
 	err := row.Scan(
@@ -96,7 +96,7 @@ WHERE id = $1
 `
 
 type UpdatePlanParams struct {
-	ID            int32          `json:"id"`
+	ID            int64          `json:"id"`
 	Name          string         `json:"name"`
 	Cost          pgtype.Numeric `json:"cost"`
 	EmployeeLimit int32          `json:"employee_limit"`

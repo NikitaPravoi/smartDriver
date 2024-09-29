@@ -22,7 +22,7 @@ type CreateUserParams struct {
 	Name           pgtype.Text `json:"name"`
 	Surname        pgtype.Text `json:"surname"`
 	Patronymic     pgtype.Text `json:"patronymic"`
-	OrganizationID int32       `json:"organization_id"`
+	OrganizationID int64       `json:"organization_id"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -54,7 +54,7 @@ DELETE FROM users
 WHERE id = $1
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, id int32) error {
+func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deleteUser, id)
 	return err
 }
@@ -63,7 +63,7 @@ const getOrganizationUsers = `-- name: GetOrganizationUsers :many
 SELECT id, login, password, name, surname, patronymic, organization_id, created_at, updated_at FROM users WHERE organization_id = $1
 `
 
-func (q *Queries) GetOrganizationUsers(ctx context.Context, organizationID int32) ([]User, error) {
+func (q *Queries) GetOrganizationUsers(ctx context.Context, organizationID int64) ([]User, error) {
 	rows, err := q.db.Query(ctx, getOrganizationUsers, organizationID)
 	if err != nil {
 		return nil, err
@@ -97,7 +97,7 @@ const getUser = `-- name: GetUser :one
 SELECT id, login, password, name, surname, patronymic, organization_id, created_at, updated_at FROM users WHERE id = $1
 `
 
-func (q *Queries) GetUser(ctx context.Context, id int32) (User, error) {
+func (q *Queries) GetUser(ctx context.Context, id int64) (User, error) {
 	row := q.db.QueryRow(ctx, getUser, id)
 	var i User
 	err := row.Scan(
@@ -123,12 +123,12 @@ WHERE u.id = $1
 `
 
 type GetUserWithHisRolesRow struct {
-	ID       int32  `json:"id"`
+	ID       int64  `json:"id"`
 	Login    string `json:"login"`
 	RoleName string `json:"role_name"`
 }
 
-func (q *Queries) GetUserWithHisRoles(ctx context.Context, id int32) (GetUserWithHisRolesRow, error) {
+func (q *Queries) GetUserWithHisRoles(ctx context.Context, id int64) (GetUserWithHisRolesRow, error) {
 	row := q.db.QueryRow(ctx, getUserWithHisRoles, id)
 	var i GetUserWithHisRolesRow
 	err := row.Scan(&i.ID, &i.Login, &i.RoleName)
@@ -144,12 +144,12 @@ WHERE u.organization_id = $1
 `
 
 type GetUserWithHisRolesByOrganizationRow struct {
-	ID       int32  `json:"id"`
+	ID       int64  `json:"id"`
 	Login    string `json:"login"`
 	RoleName string `json:"role_name"`
 }
 
-func (q *Queries) GetUserWithHisRolesByOrganization(ctx context.Context, organizationID int32) (GetUserWithHisRolesByOrganizationRow, error) {
+func (q *Queries) GetUserWithHisRolesByOrganization(ctx context.Context, organizationID int64) (GetUserWithHisRolesByOrganizationRow, error) {
 	row := q.db.QueryRow(ctx, getUserWithHisRolesByOrganization, organizationID)
 	var i GetUserWithHisRolesByOrganizationRow
 	err := row.Scan(&i.ID, &i.Login, &i.RoleName)
@@ -197,7 +197,7 @@ WHERE id = $1
 `
 
 type UpdateUserParams struct {
-	ID       int32       `json:"id"`
+	ID       int64       `json:"id"`
 	Name     pgtype.Text `json:"name"`
 	Surname  pgtype.Text `json:"surname"`
 	Password string      `json:"password"`

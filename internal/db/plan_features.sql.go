@@ -15,7 +15,7 @@ INSERT INTO plan_features (plan_id, feature_name)
 `
 
 type CreatePlanFeatureParams struct {
-	PlanID      int32  `json:"plan_id"`
+	PlanID      int64  `json:"plan_id"`
 	FeatureName string `json:"feature_name"`
 }
 
@@ -31,7 +31,7 @@ DELETE FROM plan_features
 WHERE id = $1
 `
 
-func (q *Queries) DeletePlanFeature(ctx context.Context, id int32) error {
+func (q *Queries) DeletePlanFeature(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deletePlanFeature, id)
 	return err
 }
@@ -40,7 +40,7 @@ const getPlanFeature = `-- name: GetPlanFeature :one
 SELECT id, plan_id, feature_name FROM plan_features WHERE id = $1
 `
 
-func (q *Queries) GetPlanFeature(ctx context.Context, id int32) (PlanFeature, error) {
+func (q *Queries) GetPlanFeature(ctx context.Context, id int64) (PlanFeature, error) {
 	row := q.db.QueryRow(ctx, getPlanFeature, id)
 	var i PlanFeature
 	err := row.Scan(&i.ID, &i.PlanID, &i.FeatureName)
@@ -78,8 +78,8 @@ WHERE id = $1
 `
 
 type UpdatePlanFeatureParams struct {
-	ID          int32  `json:"id"`
-	PlanID      int32  `json:"plan_id"`
+	ID          int64  `json:"id"`
+	PlanID      int64  `json:"plan_id"`
 	FeatureName string `json:"feature_name"`
 }
 

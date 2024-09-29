@@ -9,14 +9,14 @@ import (
 )
 
 type Branch struct {
-	ID             int32        `json:"id"`
+	ID             int64        `json:"id"`
 	Name           string       `json:"name"`
 	Location       pgtype.Point `json:"location"`
-	OrganizationID int32        `json:"organization_id"`
+	OrganizationID int64        `json:"organization_id"`
 }
 
 type Order struct {
-	ID            int32            `json:"id"`
+	ID            int64            `json:"id"`
 	CustomerName  string           `json:"customer_name"`
 	CustomerPhone pgtype.Text      `json:"customer_phone"`
 	City          pgtype.Text      `json:"city"`
@@ -31,55 +31,63 @@ type Order struct {
 }
 
 type Organization struct {
-	ID      int32   `json:"id"`
+	ID      int64   `json:"id"`
 	Name    string  `json:"name"`
 	Balance float32 `json:"balance"`
 	IikoID  string  `json:"iiko_id"`
 }
 
 type OrganizationPlan struct {
-	ID             int32       `json:"id"`
-	OrganizationID int32       `json:"organization_id"`
-	PlanID         int32       `json:"plan_id"`
+	ID             int64       `json:"id"`
+	OrganizationID int64       `json:"organization_id"`
+	PlanID         int64       `json:"plan_id"`
 	StartDate      pgtype.Date `json:"start_date"`
 	EndDate        pgtype.Date `json:"end_date"`
 }
 
+type Payment struct {
+	ID             int64            `json:"id"`
+	OrganizationID int64            `json:"organization_id"`
+	Amount         pgtype.Numeric   `json:"amount"`
+	PaymentDate    pgtype.Timestamp `json:"payment_date"`
+	PaymentMethod  string           `json:"payment_method"`
+}
+
 type Plan struct {
-	ID            int32          `json:"id"`
+	ID            int64          `json:"id"`
 	Name          string         `json:"name"`
 	Cost          pgtype.Numeric `json:"cost"`
 	EmployeeLimit int32          `json:"employee_limit"`
 }
 
 type PlanFeature struct {
-	ID          int32  `json:"id"`
-	PlanID      int32  `json:"plan_id"`
+	ID          int64  `json:"id"`
+	PlanID      int64  `json:"plan_id"`
 	FeatureName string `json:"feature_name"`
 }
 
 type Ride struct {
-	ID        int32            `json:"id"`
-	BranchID  int32            `json:"branch_id"`
+	ID        int64            `json:"id"`
+	BranchID  int64            `json:"branch_id"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	EndedAt   pgtype.Timestamp `json:"ended_at"`
 }
 
 type RidesToOrder struct {
-	ID      int32 `json:"id"`
-	RideID  int32 `json:"ride_id"`
-	OrderID int32 `json:"order_id"`
+	ID      int64 `json:"id"`
+	RideID  int64 `json:"ride_id"`
+	OrderID int64 `json:"order_id"`
 }
 
 type Role struct {
-	ID          int32       `json:"id"`
+	ID          int64       `json:"id"`
 	Name        string      `json:"name"`
 	Description pgtype.Text `json:"description"`
 }
 
 type Session struct {
-	ID           int32            `json:"id"`
-	UserID       int32            `json:"user_id"`
+	ID           int64            `json:"id"`
+	UserID       int64            `json:"user_id"`
 	SessionToken string           `json:"session_token"`
 	RefreshToken string           `json:"refresh_token"`
 	CreatedAt    pgtype.Timestamp `json:"created_at"`
@@ -87,19 +95,19 @@ type Session struct {
 }
 
 type User struct {
-	ID             int32            `json:"id"`
+	ID             int64            `json:"id"`
 	Login          string           `json:"login"`
 	Password       string           `json:"password"`
 	Name           pgtype.Text      `json:"name"`
 	Surname        pgtype.Text      `json:"surname"`
 	Patronymic     pgtype.Text      `json:"patronymic"`
-	OrganizationID int32            `json:"organization_id"`
+	OrganizationID int64            `json:"organization_id"`
 	CreatedAt      pgtype.Timestamp `json:"created_at"`
 	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
 }
 
 type UserRole struct {
-	ID     int32 `json:"id"`
-	RoleID int32 `json:"role_id"`
-	UserID int32 `json:"user_id"`
+	ID     int64 `json:"id"`
+	RoleID int64 `json:"role_id"`
+	UserID int64 `json:"user_id"`
 }

@@ -15,8 +15,8 @@ INSERT INTO rides_to_orders (ride_id, order_id)
 `
 
 type CreateRideToOrderParams struct {
-	RideID  int32 `json:"ride_id"`
-	OrderID int32 `json:"order_id"`
+	RideID  int64 `json:"ride_id"`
+	OrderID int64 `json:"order_id"`
 }
 
 func (q *Queries) CreateRideToOrder(ctx context.Context, arg CreateRideToOrderParams) (RidesToOrder, error) {
@@ -31,7 +31,7 @@ DELETE FROM rides_to_orders
 WHERE id = $1
 `
 
-func (q *Queries) DeleteRideToOrder(ctx context.Context, id int32) error {
+func (q *Queries) DeleteRideToOrder(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deleteRideToOrder, id)
 	return err
 }
@@ -40,7 +40,7 @@ const getRideToOrder = `-- name: GetRideToOrder :one
 SELECT id, ride_id, order_id FROM rides_to_orders WHERE id = $1
 `
 
-func (q *Queries) GetRideToOrder(ctx context.Context, id int32) (RidesToOrder, error) {
+func (q *Queries) GetRideToOrder(ctx context.Context, id int64) (RidesToOrder, error) {
 	row := q.db.QueryRow(ctx, getRideToOrder, id)
 	var i RidesToOrder
 	err := row.Scan(&i.ID, &i.RideID, &i.OrderID)
@@ -78,9 +78,9 @@ WHERE id = $1
 `
 
 type UpdateRideToOrderParams struct {
-	ID      int32 `json:"id"`
-	RideID  int32 `json:"ride_id"`
-	OrderID int32 `json:"order_id"`
+	ID      int64 `json:"id"`
+	RideID  int64 `json:"ride_id"`
+	OrderID int64 `json:"order_id"`
 }
 
 func (q *Queries) UpdateRideToOrder(ctx context.Context, arg UpdateRideToOrderParams) error {

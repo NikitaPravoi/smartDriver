@@ -37,7 +37,7 @@ DELETE FROM organizations
 WHERE id = $1
 `
 
-func (q *Queries) DeleteOrganization(ctx context.Context, id int32) error {
+func (q *Queries) DeleteOrganization(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deleteOrganization, id)
 	return err
 }
@@ -46,7 +46,7 @@ const getOrganization = `-- name: GetOrganization :one
 SELECT id, name, balance, iiko_id FROM organizations WHERE id = $1
 `
 
-func (q *Queries) GetOrganization(ctx context.Context, id int32) (Organization, error) {
+func (q *Queries) GetOrganization(ctx context.Context, id int64) (Organization, error) {
 	row := q.db.QueryRow(ctx, getOrganization, id)
 	var i Organization
 	err := row.Scan(
@@ -94,7 +94,7 @@ WHERE id = $1
 `
 
 type UpdateOrganizationParams struct {
-	ID      int32   `json:"id"`
+	ID      int64   `json:"id"`
 	Name    string  `json:"name"`
 	Balance float32 `json:"balance"`
 	IikoID  string  `json:"iiko_id"`

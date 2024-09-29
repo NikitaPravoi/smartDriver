@@ -17,8 +17,8 @@ INSERT INTO organization_plans (organization_id, plan_id, start_date, end_date)
 `
 
 type CreateOrganizationPlanParams struct {
-	OrganizationID int32       `json:"organization_id"`
-	PlanID         int32       `json:"plan_id"`
+	OrganizationID int64       `json:"organization_id"`
+	PlanID         int64       `json:"plan_id"`
 	StartDate      pgtype.Date `json:"start_date"`
 	EndDate        pgtype.Date `json:"end_date"`
 }
@@ -46,7 +46,7 @@ DELETE FROM organization_plans
 WHERE id = $1
 `
 
-func (q *Queries) DeleteOrganizationPlan(ctx context.Context, id int32) error {
+func (q *Queries) DeleteOrganizationPlan(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deleteOrganizationPlan, id)
 	return err
 }
@@ -55,7 +55,7 @@ const getOrganizationPlan = `-- name: GetOrganizationPlan :one
 SELECT id, organization_id, plan_id, start_date, end_date FROM organization_plans WHERE id = $1
 `
 
-func (q *Queries) GetOrganizationPlan(ctx context.Context, id int32) (OrganizationPlan, error) {
+func (q *Queries) GetOrganizationPlan(ctx context.Context, id int64) (OrganizationPlan, error) {
 	row := q.db.QueryRow(ctx, getOrganizationPlan, id)
 	var i OrganizationPlan
 	err := row.Scan(
@@ -105,9 +105,9 @@ WHERE id = $1
 `
 
 type UpdateOrganizationPlanParams struct {
-	ID             int32       `json:"id"`
-	OrganizationID int32       `json:"organization_id"`
-	PlanID         int32       `json:"plan_id"`
+	ID             int64       `json:"id"`
+	OrganizationID int64       `json:"organization_id"`
+	PlanID         int64       `json:"plan_id"`
 	StartDate      pgtype.Date `json:"start_date"`
 	EndDate        pgtype.Date `json:"end_date"`
 }

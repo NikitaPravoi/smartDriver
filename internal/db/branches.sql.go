@@ -19,7 +19,7 @@ INSERT INTO branches (name, location, organization_id)
 type CreateBranchParams struct {
 	Name           string       `json:"name"`
 	Location       pgtype.Point `json:"location"`
-	OrganizationID int32        `json:"organization_id"`
+	OrganizationID int64        `json:"organization_id"`
 }
 
 func (q *Queries) CreateBranch(ctx context.Context, arg CreateBranchParams) (Branch, error) {
@@ -39,7 +39,7 @@ DELETE FROM branches
 WHERE id = $1
 `
 
-func (q *Queries) DeleteBranch(ctx context.Context, id int32) error {
+func (q *Queries) DeleteBranch(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deleteBranch, id)
 	return err
 }
@@ -48,7 +48,7 @@ const getBranch = `-- name: GetBranch :one
 SELECT id, name, location, organization_id FROM branches WHERE id = $1
 `
 
-func (q *Queries) GetBranch(ctx context.Context, id int32) (Branch, error) {
+func (q *Queries) GetBranch(ctx context.Context, id int64) (Branch, error) {
 	row := q.db.QueryRow(ctx, getBranch, id)
 	var i Branch
 	err := row.Scan(
@@ -96,10 +96,10 @@ WHERE id = $1
 `
 
 type UpdateBranchParams struct {
-	ID             int32        `json:"id"`
+	ID             int64        `json:"id"`
 	Name           string       `json:"name"`
 	Location       pgtype.Point `json:"location"`
-	OrganizationID int32        `json:"organization_id"`
+	OrganizationID int64        `json:"organization_id"`
 }
 
 func (q *Queries) UpdateBranch(ctx context.Context, arg UpdateBranchParams) error {

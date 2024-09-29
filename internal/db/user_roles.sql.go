@@ -15,8 +15,8 @@ VALUES ($1, $2) RETURNING id, role_id, user_id
 `
 
 type CreateUserRoleParams struct {
-	RoleID int32 `json:"role_id"`
-	UserID int32 `json:"user_id"`
+	RoleID int64 `json:"role_id"`
+	UserID int64 `json:"user_id"`
 }
 
 func (q *Queries) CreateUserRole(ctx context.Context, arg CreateUserRoleParams) (UserRole, error) {
@@ -31,7 +31,7 @@ DELETE FROM user_roles
 WHERE id = $1
 `
 
-func (q *Queries) DeleteUserRole(ctx context.Context, id int32) error {
+func (q *Queries) DeleteUserRole(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deleteUserRole, id)
 	return err
 }
@@ -40,7 +40,7 @@ const getUserRoles = `-- name: GetUserRoles :many
 SELECT id, role_id, user_id FROM user_roles WHERE user_id = $1
 `
 
-func (q *Queries) GetUserRoles(ctx context.Context, userID int32) ([]UserRole, error) {
+func (q *Queries) GetUserRoles(ctx context.Context, userID int64) ([]UserRole, error) {
 	rows, err := q.db.Query(ctx, getUserRoles, userID)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ const getUsersByRole = `-- name: GetUsersByRole :many
 SELECT id, role_id, user_id FROM user_roles WHERE role_id = $1
 `
 
-func (q *Queries) GetUsersByRole(ctx context.Context, roleID int32) ([]UserRole, error) {
+func (q *Queries) GetUsersByRole(ctx context.Context, roleID int64) ([]UserRole, error) {
 	rows, err := q.db.Query(ctx, getUsersByRole, roleID)
 	if err != nil {
 		return nil, err
@@ -115,8 +115,8 @@ WHERE id = $1
 `
 
 type UpdateUserRoleParams struct {
-	ID     int32 `json:"id"`
-	RoleID int32 `json:"role_id"`
+	ID     int64 `json:"id"`
+	RoleID int64 `json:"role_id"`
 }
 
 func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) error {

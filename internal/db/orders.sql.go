@@ -67,7 +67,7 @@ DELETE FROM orders
 WHERE id = $1
 `
 
-func (q *Queries) DeleteOrder(ctx context.Context, id int32) error {
+func (q *Queries) DeleteOrder(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deleteOrder, id)
 	return err
 }
@@ -76,7 +76,7 @@ const getOrder = `-- name: GetOrder :one
 SELECT id, customer_name, customer_phone, city, street, apartment, floor, entrance, comment, cost, status, created_at FROM orders WHERE id = $1
 `
 
-func (q *Queries) GetOrder(ctx context.Context, id int32) (Order, error) {
+func (q *Queries) GetOrder(ctx context.Context, id int64) (Order, error) {
 	row := q.db.QueryRow(ctx, getOrder, id)
 	var i Order
 	err := row.Scan(
@@ -140,7 +140,7 @@ WHERE id = $1
 `
 
 type UpdateOrderParams struct {
-	ID            int32          `json:"id"`
+	ID            int64          `json:"id"`
 	CustomerName  string         `json:"customer_name"`
 	CustomerPhone pgtype.Text    `json:"customer_phone"`
 	City          pgtype.Text    `json:"city"`

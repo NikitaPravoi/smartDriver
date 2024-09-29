@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"context"
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/jackc/pgx/v5/pgtype"
+	"golang.org/x/crypto/bcrypt"
 	"smartDriver/internal/db"
 	"time"
 )
@@ -14,17 +16,27 @@ type CreateUserInput struct {
 		Name           string `json:"name" maxLength:"50" doc:"User name"`
 		Surname        string `json:"surname" maxLength:"50" doc:"User surname"`
 		Patronymic     string `json:"patronymic" maxLength:"50" doc:"User patronymic"`
-		OrganizationID int32  `json:"organization_id" example:"1" doc:"Organization ID"`
+		OrganizationID int64  `json:"organization_id" example:"1" doc:"Organization ID"`
 	}
+}
+
+func hashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
 }
 
 func CreateUserHandler(ctx context.Context, input *CreateUserInput) (*SuccessOutput, error) {
 	resp := &SuccessOutput{}
 
+	// Hashing the password before storing
+	hashedPassword, err := hashPassword(input.Body.Password)
+	if err != nil {
+		return nil, huma.Error500InternalServerError("error hashing password")
+	}
+
 	params := db.CreateUserParams{
-		Login: input.Body.Login,
-		// TODO: implement hashing
-		Password:       input.Body.Password,
+		Login:          input.Body.Login,
+		Password:       hashedPassword,
 		Name:           pgtype.Text{input.Body.Name, true},
 		Surname:        pgtype.Text{input.Body.Surname, true},
 		Patronymic:     pgtype.Text{input.Body.Patronymic, true},
@@ -32,10 +44,9 @@ func CreateUserHandler(ctx context.Context, input *CreateUserInput) (*SuccessOut
 	}
 
 	queries := db.Queries{}
-	_, err := queries.CreateUser(ctx, params)
+	_, err = queries.CreateUser(ctx, params)
 	if err != nil {
-		resp.Body.Success = false
-		return nil, err
+		return nil, huma.Error500InternalServerError("error creating user")
 	}
 
 	resp.Body.Success = true

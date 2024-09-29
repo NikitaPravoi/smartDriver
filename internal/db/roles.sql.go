@@ -33,7 +33,7 @@ DELETE FROM roles
 WHERE id = $1
 `
 
-func (q *Queries) DeleteRole(ctx context.Context, id int32) error {
+func (q *Queries) DeleteRole(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deleteRole, id)
 	return err
 }
@@ -42,7 +42,7 @@ const getRole = `-- name: GetRole :one
 SELECT id, name, description FROM roles WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) GetRole(ctx context.Context, id int32) (Role, error) {
+func (q *Queries) GetRole(ctx context.Context, id int64) (Role, error) {
 	row := q.db.QueryRow(ctx, getRole, id)
 	var i Role
 	err := row.Scan(&i.ID, &i.Name, &i.Description)
@@ -80,7 +80,7 @@ WHERE id = $1
 `
 
 type UpdateRoleParams struct {
-	ID          int32       `json:"id"`
+	ID          int64       `json:"id"`
 	Name        string      `json:"name"`
 	Description pgtype.Text `json:"description"`
 }

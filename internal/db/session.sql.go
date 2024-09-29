@@ -17,7 +17,7 @@ VALUES ($1, $2, $3, $4, $5) RETURNING id, user_id, session_token, refresh_token,
 `
 
 type CreateSessionParams struct {
-	UserID       int32            `json:"user_id"`
+	UserID       int64            `json:"user_id"`
 	SessionToken string           `json:"session_token"`
 	RefreshToken string           `json:"refresh_token"`
 	CreatedAt    pgtype.Timestamp `json:"created_at"`
@@ -49,7 +49,7 @@ DELETE FROM sessions
 WHERE id = $1
 `
 
-func (q *Queries) DeleteSession(ctx context.Context, id int32) error {
+func (q *Queries) DeleteSession(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deleteSession, id)
 	return err
 }
@@ -68,7 +68,7 @@ const getSession = `-- name: GetSession :one
 SELECT id, user_id, session_token, refresh_token, created_at, expires_at FROM sessions WHERE id = $1
 `
 
-func (q *Queries) GetSession(ctx context.Context, id int32) (Session, error) {
+func (q *Queries) GetSession(ctx context.Context, id int64) (Session, error) {
 	row := q.db.QueryRow(ctx, getSession, id)
 	var i Session
 	err := row.Scan(
@@ -138,8 +138,8 @@ WHERE id = $1
 `
 
 type UpdateSessionParams struct {
-	ID           int32            `json:"id"`
-	UserID       int32            `json:"user_id"`
+	ID           int64            `json:"id"`
+	UserID       int64            `json:"user_id"`
 	SessionToken string           `json:"session_token"`
 	RefreshToken string           `json:"refresh_token"`
 	CreatedAt    pgtype.Timestamp `json:"created_at"`

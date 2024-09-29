@@ -14,7 +14,7 @@ INSERT INTO rides (branch_id)
     VALUES ($1) RETURNING id, branch_id, created_at, ended_at
 `
 
-func (q *Queries) CreateRide(ctx context.Context, branchID int32) (Ride, error) {
+func (q *Queries) CreateRide(ctx context.Context, branchID int64) (Ride, error) {
 	row := q.db.QueryRow(ctx, createRide, branchID)
 	var i Ride
 	err := row.Scan(
@@ -31,7 +31,7 @@ DELETE FROM rides
 WHERE id = $1
 `
 
-func (q *Queries) DeleteRide(ctx context.Context, id int32) error {
+func (q *Queries) DeleteRide(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deleteRide, id)
 	return err
 }
@@ -40,7 +40,7 @@ const getRide = `-- name: GetRide :one
 SELECT id, branch_id, created_at, ended_at FROM rides WHERE id = $1
 `
 
-func (q *Queries) GetRide(ctx context.Context, id int32) (Ride, error) {
+func (q *Queries) GetRide(ctx context.Context, id int64) (Ride, error) {
 	row := q.db.QueryRow(ctx, getRide, id)
 	var i Ride
 	err := row.Scan(

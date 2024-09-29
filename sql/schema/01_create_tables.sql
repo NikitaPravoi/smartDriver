@@ -1,182 +1,171 @@
-create table if not exists orders
-(
-    id             serial
-        primary key,
-    customer_name  varchar(255)   not null,
-    customer_phone varchar(20)    null,
-    city           varchar(64)    null,
-    street         varchar(64)    null,
-    apartment      varchar(64)    null,
-    floor          int            null,
-    entrance       int            null,
-    comment        varchar(255)   null,
-    cost           numeric(10, 2) not null,
-    status         int default 0  null,
-    created_at     timestamp      not null
+create table if not exists orders (
+                                      id bigint primary key generated always as identity,
+                                      customer_name text not null,
+                                      customer_phone text,
+                                      city text,
+                                      street text,
+                                      apartment text,
+                                      floor int,
+                                      entrance int,
+                                      comment text,
+                                      cost numeric(10, 2) not null,
+                                      status int default 0,
+                                      created_at timestamp not null
 );
 
-create table if not exists organizations
-(
-    id      serial
-        primary key,
-    name    varchar(128)    not null,
-    balance real default 0 not null,
-    iiko_id varchar(256)    not null,
-    constraint organizations_iiko_id_uindex
-        unique (iiko_id),
-    constraint organizations_pk
-        unique (iiko_id)
+create table if not exists organizations (
+                                             id bigint primary key generated always as identity,
+                                             name text not null,
+                                             balance real default 0 not null,
+                                             iiko_id text not null unique
 );
 
-create table if not exists branches
-(
-    id              serial
-        primary key,
-    name            varchar(64) not null,
-    location        point       not null,
-    organization_id int         not null,
-    constraint branches_organizations_id_fk
-        foreign key (organization_id) references organizations (id)
+create table if not exists branches (
+                                        id bigint primary key generated always as identity,
+                                        name text not null,
+                                        location point not null,
+                                        organization_id bigint not null,
+                                        foreign key (organization_id) references organizations (id)
 );
 
-create table if not exists plans
-(
-    id             serial
-        primary key,
-    name           varchar(255)   not null,
-    cost           numeric(10, 2) not null,
-    employee_limit int            not null
+create table if not exists plans (
+                                     id bigint primary key generated always as identity,
+                                     name text not null,
+                                     cost numeric(10, 2) not null,
+                                     employee_limit int not null
 );
 
-create table if not exists organization_plans
-(
-    id              serial
-        primary key,
-    organization_id int  not null,
-    plan_id         int  not null,
-    start_date      date not null,
-    end_date        date null,
-    constraint organization_plans_ibfk_1
-        foreign key (organization_id) references organizations (id),
-    constraint organization_plans_ibfk_2
-        foreign key (plan_id) references plans (id)
+create table if not exists organization_plans (
+                                                  id bigint primary key generated always as identity,
+                                                  organization_id bigint not null,
+                                                  plan_id bigint not null,
+                                                  start_date date not null,
+                                                  end_date date,
+                                                  foreign key (organization_id) references organizations (id),
+                                                  foreign key (plan_id) references plans (id)
 );
 
-create index organization_id_idx
-    on organization_plans (organization_id);
+create index organization_id_idx on organization_plans using btree (organization_id);
 
-
-create table if not exists plan_features
-(
-    id           serial
-        primary key,
-    plan_id      int          not null,
-    feature_name varchar(255) not null,
-    constraint plan_features_ibfk_1
-        foreign key (plan_id) references plans (id)
+create table if not exists plan_features (
+                                             id bigint primary key generated always as identity,
+                                             plan_id bigint not null,
+                                             feature_name text not null,
+                                             foreign key (plan_id) references plans (id)
 );
 
-create index plan_id_idx
-    on plan_features (plan_id);
+create index plan_id_idx on plan_features using btree (plan_id);
 
-create table if not exists rides
-(
-    id         serial
-        primary key,
-    branch_id  int                                not null,
-    created_at timestamp default CURRENT_TIMESTAMP not null,
-    ended_at   timestamp                           null,
-    constraint ride_branches_id_fk
-        foreign key (branch_id) references branches (id)
+create table if not exists rides (
+                                     id bigint primary key generated always as identity,
+                                     branch_id bigint not null,
+                                     created_at timestamp default current_timestamp not null,
+                                     ended_at timestamp,
+                                     foreign key (branch_id) references branches (id)
 );
 
-create table if not exists rides_to_orders
-(
-    id       serial
-        primary key,
-    ride_id  int not null,
-    order_id int not null,
-    constraint ride_to_orders_ride_id_fk
-        foreign key (ride_id) references rides (id),
-    constraint rides_to_orders_orders_id_fk
-        foreign key (order_id) references orders (id)
+create table if not exists rides_to_orders (
+                                               id bigint primary key generated always as identity,
+                                               ride_id bigint not null,
+                                               order_id bigint not null,
+                                               foreign key (ride_id) references rides (id),
+                                               foreign key (order_id) references orders (id)
 );
 
-create table if not exists roles
-(
-    id          serial
-        primary key,
-    name        varchar(64)  not null,
-    description varchar(128) null
+create table if not exists roles (
+                                     id bigint primary key generated always as identity,
+                                     name text not null,
+                                     description text
 );
 
-CREATE TABLE IF NOT EXISTS users (
-                                     id serial
-                                         PRIMARY KEY,
-                                     login VARCHAR(50) NOT NULL UNIQUE,
-                                     password TEXT NOT NULL,
-                                     name VARCHAR(50),
-                                     surname VARCHAR(50),
-                                     patronymic VARCHAR(50),
-                                     organization_id INT NOT NULL,
-                                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-                                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-                                     CONSTRAINT users_organizations_id_fk FOREIGN KEY (organization_id) REFERENCES organizations (id)
+create table if not exists users (
+                                     id bigint primary key generated always as identity,
+                                     login text not null unique,
+                                     password text not null,
+                                     name text,
+                                     surname text,
+                                     patronymic text,
+                                     organization_id bigint not null,
+                                     created_at timestamp default current_timestamp not null,
+                                     updated_at timestamp default current_timestamp not null,
+                                     foreign key (organization_id) references organizations (id)
 );
 
-create table if not exists user_roles
-(
-    id      serial
-        primary key,
-    role_id int not null,
-    user_id int not null,
-    constraint user_roles_role_id_fk
-        foreign key (role_id) references roles (id),
-    constraint user_roles_users_id_fk
-        foreign key (user_id) references users (id)
+create table if not exists user_roles (
+                                          id bigint primary key generated always as identity,
+                                          role_id bigint not null,
+                                          user_id bigint not null,
+                                          foreign key (role_id) references roles (id),
+                                          foreign key (user_id) references users (id)
 );
 
--- Trigger function to update `updated_at` timestamp on row update
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-    RETURNS TRIGGER AS $$
+create
+    or replace function update_updated_at_column () returns trigger as $$
 BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
-RETURN NEW;
+    RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ language plpgsql;
 
--- Trigger to call the function on update
-CREATE TRIGGER update_users_updated_at
-    BEFORE UPDATE ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+create trigger update_users_updated_at before
+    update on users for each row
+execute function update_updated_at_column ();
 
--- Создание таблицы сессий
-CREATE TABLE IF NOT EXISTS sessions (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL,
-    session_token TEXT NOT NULL UNIQUE,
-    refresh_token TEXT NOT NULL UNIQUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    CONSTRAINT sessions_users_id_fk FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+create table if not exists sessions (
+                                        id bigint primary key generated always as identity,
+                                        user_id bigint not null,
+                                        session_token text not null unique,
+                                        refresh_token text not null unique,
+                                        created_at timestamp default current_timestamp not null,
+                                        expires_at timestamp not null,
+                                        foreign key (user_id) references users (id) on delete cascade
 );
 
--- Индексы для ускорения поиска по user_id и session_token
-CREATE INDEX idx_sessions_user_id ON sessions (user_id);
-CREATE INDEX idx_sessions_session_token ON sessions (session_token);
-CREATE INDEX idx_sessions_refresh_token ON sessions (refresh_token);
+create index idx_sessions_user_id on sessions using btree (user_id);
 
--- Триггер для автоматического удаления просроченных сессий
-CREATE OR REPLACE FUNCTION delete_expired_sessions()
-    RETURNS TRIGGER AS $$
+create index idx_sessions_session_token on sessions using btree (session_token);
+
+create index idx_sessions_refresh_token on sessions using btree (refresh_token);
+
+create
+    or replace function delete_expired_sessions () returns trigger as $$
 BEGIN
     DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ language plpgsql;
 
-CREATE TRIGGER trigger_delete_expired_sessions
-    BEFORE INSERT ON sessions
-    FOR EACH ROW
-EXECUTE FUNCTION delete_expired_sessions();
+create trigger trigger_delete_expired_sessions before insert on sessions for each row
+execute function delete_expired_sessions ();
+
+create table if not exists payments (
+                                        id bigint primary key generated always as identity,
+                                        organization_id bigint not null,
+                                        amount numeric(10, 2) not null,
+                                        payment_date timestamp default current_timestamp not null,
+                                        payment_method text not null,
+                                        foreign key (organization_id) references organizations (id)
+);
+
+create
+    or replace function withdraw_balance (o_id bigint, amount numeric) returns void as $$
+DECLARE
+    current_balance numeric;
+BEGIN
+    -- Get the current balance of the organization
+    SELECT balance + COALESCE(SUM(p.amount), 0) INTO current_balance
+    FROM organizations o
+             LEFT JOIN payments p ON o.id = p.organization_id
+    WHERE o.id = o_id
+    GROUP BY o.balance;
+
+    -- Check if the balance is sufficient
+    IF current_balance >= amount THEN
+        -- Insert a payment record to withdraw the amount
+        INSERT INTO payments (organization_id, amount, payment_method)
+        VALUES (organization_id, -amount, 'withdrawal');
+    ELSE
+        RAISE NOTICE 'Insufficient balance to withdraw %', amount;
+    END IF;
+END;
+$$ language plpgsql;
