@@ -7,8 +7,6 @@ package db
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createRole = `-- name: CreateRole :one
@@ -17,8 +15,8 @@ VALUES ($1, $2) RETURNING id, name, description
 `
 
 type CreateRoleParams struct {
-	Name        string      `json:"name"`
-	Description pgtype.Text `json:"description"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
 }
 
 func (q *Queries) CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error) {
@@ -80,9 +78,9 @@ WHERE id = $1
 `
 
 type UpdateRoleParams struct {
-	ID          int64       `json:"id"`
-	Name        string      `json:"name"`
-	Description pgtype.Text `json:"description"`
+	ID          int64   `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
 }
 
 func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) error {

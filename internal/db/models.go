@@ -16,25 +16,25 @@ type Branch struct {
 }
 
 type Order struct {
-	ID            int64            `json:"id"`
-	CustomerName  string           `json:"customer_name"`
-	CustomerPhone pgtype.Text      `json:"customer_phone"`
-	City          pgtype.Text      `json:"city"`
-	Street        pgtype.Text      `json:"street"`
-	Apartment     pgtype.Text      `json:"apartment"`
-	Floor         pgtype.Int4      `json:"floor"`
-	Entrance      pgtype.Int4      `json:"entrance"`
-	Comment       pgtype.Text      `json:"comment"`
-	Cost          pgtype.Numeric   `json:"cost"`
-	Status        pgtype.Int4      `json:"status"`
-	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	ID           int64            `json:"id"`
+	CustomerName string           `json:"customer_name"`
+	City         *string          `json:"city"`
+	Street       *string          `json:"street"`
+	Apartment    *string          `json:"apartment"`
+	Floor        *int32           `json:"floor"`
+	Entrance     *int32           `json:"entrance"`
+	Comment      *string          `json:"comment"`
+	Cost         pgtype.Numeric   `json:"cost"`
+	Status       *string          `json:"status"`
+	Location     pgtype.Point     `json:"location"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
 }
 
 type Organization struct {
-	ID      int64   `json:"id"`
-	Name    string  `json:"name"`
-	Balance float32 `json:"balance"`
-	IikoID  string  `json:"iiko_id"`
+	ID           int64          `json:"id"`
+	Name         string         `json:"name"`
+	Balance      pgtype.Numeric `json:"balance"`
+	IikoApiToken string         `json:"iiko_api_token"`
 }
 
 type OrganizationPlan struct {
@@ -66,6 +66,11 @@ type PlanFeature struct {
 	FeatureName string `json:"feature_name"`
 }
 
+type Revision struct {
+	RevisionID     int64  `json:"revision_id"`
+	OrganizationID *int64 `json:"organization_id"`
+}
+
 type Ride struct {
 	ID        int64            `json:"id"`
 	BranchID  int64            `json:"branch_id"`
@@ -80,9 +85,9 @@ type RidesToOrder struct {
 }
 
 type Role struct {
-	ID          int64       `json:"id"`
-	Name        string      `json:"name"`
-	Description pgtype.Text `json:"description"`
+	ID          int64   `json:"id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
 }
 
 type Session struct {
@@ -98,9 +103,9 @@ type User struct {
 	ID             int64            `json:"id"`
 	Login          string           `json:"login"`
 	Password       string           `json:"password"`
-	Name           pgtype.Text      `json:"name"`
-	Surname        pgtype.Text      `json:"surname"`
-	Patronymic     pgtype.Text      `json:"patronymic"`
+	Name           *string          `json:"name"`
+	Surname        *string          `json:"surname"`
+	Patronymic     *string          `json:"patronymic"`
 	OrganizationID int64            `json:"organization_id"`
 	CreatedAt      pgtype.Timestamp `json:"created_at"`
 	UpdatedAt      pgtype.Timestamp `json:"updated_at"`

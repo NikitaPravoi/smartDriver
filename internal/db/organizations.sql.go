@@ -7,27 +7,29 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createOrganization = `-- name: CreateOrganization :one
-INSERT INTO organizations (name, balance, iiko_id)
-    VALUES ($1, $2, $3) RETURNING id, name, balance, iiko_id
+INSERT INTO organizations (name, balance, iiko_api_token)
+    VALUES ($1, $2, $3) RETURNING id, name, balance, iiko_api_token
 `
 
 type CreateOrganizationParams struct {
-	Name    string  `json:"name"`
-	Balance float32 `json:"balance"`
-	IikoID  string  `json:"iiko_id"`
+	Name         string         `json:"name"`
+	Balance      pgtype.Numeric `json:"balance"`
+	IikoApiToken string         `json:"iiko_api_token"`
 }
 
 func (q *Queries) CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error) {
-	row := q.db.QueryRow(ctx, createOrganization, arg.Name, arg.Balance, arg.IikoID)
+	row := q.db.QueryRow(ctx, createOrganization, arg.Name, arg.Balance, arg.IikoApiToken)
 	var i Organization
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Balance,
-		&i.IikoID,
+		&i.IikoApiToken,
 	)
 	return i, err
 }
@@ -43,7 +45,7 @@ func (q *Queries) DeleteOrganization(ctx context.Context, id int64) error {
 }
 
 const getOrganization = `-- name: GetOrganization :one
-SELECT id, name, balance, iiko_id FROM organizations WHERE id = $1
+SELECT id, name, balance, iiko_api_token FROM organizations WHERE id = $1
 `
 
 func (q *Queries) GetOrganization(ctx context.Context, id int64) (Organization, error) {
@@ -53,13 +55,37 @@ func (q *Queries) GetOrganization(ctx context.Context, id int64) (Organization, 
 		&i.ID,
 		&i.Name,
 		&i.Balance,
-		&i.IikoID,
+		&i.IikoApiToken,
 	)
 	return i, err
 }
 
+const getOrganizationsApiTokens = `-- name: GetOrganizationsApiTokens :many
+SELECT iiko_api_token FROM organizations WHERE balance > 0
+`
+
+func (q *Queries) GetOrganizationsApiTokens(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, getOrganizationsApiTokens)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var iiko_api_token string
+		if err := rows.Scan(&iiko_api_token); err != nil {
+			return nil, err
+		}
+		items = append(items, iiko_api_token)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOrganizations = `-- name: ListOrganizations :many
-SELECT id, name, balance, iiko_id FROM organizations
+SELECT id, name, balance, iiko_api_token FROM organizations
 `
 
 func (q *Queries) ListOrganizations(ctx context.Context) ([]Organization, error) {
@@ -75,7 +101,7 @@ func (q *Queries) ListOrganizations(ctx context.Context) ([]Organization, error)
 			&i.ID,
 			&i.Name,
 			&i.Balance,
-			&i.IikoID,
+			&i.IikoApiToken,
 		); err != nil {
 			return nil, err
 		}
@@ -89,15 +115,15 @@ func (q *Queries) ListOrganizations(ctx context.Context) ([]Organization, error)
 
 const updateOrganization = `-- name: UpdateOrganization :exec
 UPDATE organizations
-SET name = $2, balance = $3, iiko_id = $4
+SET name = $2, balance = $3, iiko_api_token = $4
 WHERE id = $1
 `
 
 type UpdateOrganizationParams struct {
-	ID      int64   `json:"id"`
-	Name    string  `json:"name"`
-	Balance float32 `json:"balance"`
-	IikoID  string  `json:"iiko_id"`
+	ID           int64          `json:"id"`
+	Name         string         `json:"name"`
+	Balance      pgtype.Numeric `json:"balance"`
+	IikoApiToken string         `json:"iiko_api_token"`
 }
 
 func (q *Queries) UpdateOrganization(ctx context.Context, arg UpdateOrganizationParams) error {
@@ -105,7 +131,7 @@ func (q *Queries) UpdateOrganization(ctx context.Context, arg UpdateOrganization
 		arg.ID,
 		arg.Name,
 		arg.Balance,
-		arg.IikoID,
+		arg.IikoApiToken,
 	)
 	return err
 }
