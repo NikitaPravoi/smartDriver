@@ -11,10 +11,11 @@ SELECT * FROM users WHERE id = $1;
 -- name: GetOrganizationUsers :many
 SELECT * FROM users WHERE organization_id = $1;
 
--- name: UpdateUser :exec
+-- name: UpdateUser :one
 UPDATE users
 SET name = $2, surname = $3, password = $4
-WHERE id = $1;
+WHERE id = $1
+RETURNING *;
 
 -- name: DeleteUser :exec
 DELETE FROM users

@@ -8,10 +8,11 @@ SELECT * FROM plan_features;
 -- name: GetPlanFeature :one
 SELECT * FROM plan_features WHERE id = $1;
 
--- name: UpdatePlanFeature :exec
+-- name: UpdatePlanFeature :one
 UPDATE plan_features
 SET plan_id = $2, feature_name = $3
-WHERE id = $1;
+WHERE id = $1
+RETURNING *;
 
 -- name: DeletePlanFeature :exec
 DELETE FROM plan_features

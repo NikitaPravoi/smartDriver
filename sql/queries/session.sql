@@ -11,10 +11,11 @@ SELECT * FROM sessions WHERE id = $1;
 -- name: GetSessionByToken :one
 SELECT * FROM sessions WHERE session_token = $1;
 
--- name: UpdateSession :exec
+-- name: UpdateSession :one
 UPDATE sessions
 SET user_id = $2, session_token = $3, refresh_token = $4, created_at = $5, expires_at = $6
-WHERE id = $1;
+WHERE id = $1
+RETURNING *;
 
 -- name: DeleteSession :exec
 DELETE FROM sessions

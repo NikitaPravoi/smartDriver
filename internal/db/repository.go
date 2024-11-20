@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+	"fmt"
+	"smartDriver/internal/config"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -16,11 +18,18 @@ var Pool *Queries
 // for example:
 //
 //	database.Pool.CreateGeolocation(...)
-func InitConnection() error {
+func InitConnection(cfg *config.Config) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	pool, err := pgxpool.New(ctx, "postgres://postgres:1234qwerASDF@localhost:5432/alarm_db")
+	pool, err := pgxpool.New(ctx, fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s",
+		cfg.Postgres.Username,
+		cfg.Postgres.Password,
+		cfg.Postgres.Host,
+		cfg.Postgres.Port,
+		cfg.Postgres.Name,
+	))
 	if err != nil {
 		return err
 	}
