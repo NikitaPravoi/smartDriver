@@ -11,17 +11,50 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countOrdersByStatus = `-- name: CountOrdersByStatus :one
+SELECT COUNT(*) FROM orders
+WHERE status = $1
+`
+
+func (q *Queries) CountOrdersByStatus(ctx context.Context, status *string) (int64, error) {
+	row := q.db.QueryRow(ctx, countOrdersByStatus, status)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createOrder = `-- name: CreateOrder :one
-INSERT INTO orders (customer_name, city, street, apartment, floor, entrance, comment, cost, status, location, created_at)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, POINT($10, $11), $12) RETURNING id, customer_name, city, street, apartment, floor, entrance, comment, cost, status, location, created_at
+INSERT INTO orders (
+    customer_name,
+    phone,
+    city,
+    street,
+    apartment,
+    floor,
+    doorphone,
+    building,
+    entrance,
+    comment,
+    cost,
+    status,
+    location,
+    created_at,
+    external_id
+) VALUES (
+             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, point($13, $14), $15, $16
+         )
+RETURNING id, customer_name, phone, city, street, apartment, floor, doorphone, building, entrance, comment, cost, status, location, created_at, external_id
 `
 
 type CreateOrderParams struct {
 	CustomerName string           `json:"customer_name"`
+	Phone        *string          `json:"phone"`
 	City         *string          `json:"city"`
 	Street       *string          `json:"street"`
 	Apartment    *string          `json:"apartment"`
 	Floor        *int32           `json:"floor"`
+	Doorphone    *string          `json:"doorphone"`
+	Building     *string          `json:"building"`
 	Entrance     *int32           `json:"entrance"`
 	Comment      *string          `json:"comment"`
 	Cost         pgtype.Numeric   `json:"cost"`
@@ -29,15 +62,19 @@ type CreateOrderParams struct {
 	Point        float64          `json:"point"`
 	Point_2      float64          `json:"point_2"`
 	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	ExternalID   string           `json:"external_id"`
 }
 
 func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order, error) {
 	row := q.db.QueryRow(ctx, createOrder,
 		arg.CustomerName,
+		arg.Phone,
 		arg.City,
 		arg.Street,
 		arg.Apartment,
 		arg.Floor,
+		arg.Doorphone,
+		arg.Building,
 		arg.Entrance,
 		arg.Comment,
 		arg.Cost,
@@ -45,27 +82,33 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		arg.Point,
 		arg.Point_2,
 		arg.CreatedAt,
+		arg.ExternalID,
 	)
 	var i Order
 	err := row.Scan(
 		&i.ID,
 		&i.CustomerName,
+		&i.Phone,
 		&i.City,
 		&i.Street,
 		&i.Apartment,
 		&i.Floor,
+		&i.Doorphone,
+		&i.Building,
 		&i.Entrance,
 		&i.Comment,
 		&i.Cost,
 		&i.Status,
 		&i.Location,
 		&i.CreatedAt,
+		&i.ExternalID,
 	)
 	return i, err
 }
 
 const getOrder = `-- name: GetOrder :one
-SELECT id, customer_name, city, street, apartment, floor, entrance, comment, cost, status, location, created_at FROM orders WHERE id = $1
+SELECT id, customer_name, phone, city, street, apartment, floor, doorphone, building, entrance, comment, cost, status, location, created_at, external_id FROM orders
+WHERE id = $1
 `
 
 func (q *Queries) GetOrder(ctx context.Context, id int64) (Order, error) {
@@ -74,26 +117,61 @@ func (q *Queries) GetOrder(ctx context.Context, id int64) (Order, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.CustomerName,
+		&i.Phone,
 		&i.City,
 		&i.Street,
 		&i.Apartment,
 		&i.Floor,
+		&i.Doorphone,
+		&i.Building,
 		&i.Entrance,
 		&i.Comment,
 		&i.Cost,
 		&i.Status,
 		&i.Location,
 		&i.CreatedAt,
+		&i.ExternalID,
 	)
 	return i, err
 }
 
-const listOrders = `-- name: ListOrders :many
-SELECT id, customer_name, city, street, apartment, floor, entrance, comment, cost, status, location, created_at FROM orders
+const getOrderByExternalID = `-- name: GetOrderByExternalID :one
+SELECT id, customer_name, phone, city, street, apartment, floor, doorphone, building, entrance, comment, cost, status, location, created_at, external_id FROM orders
+WHERE external_id = $1
 `
 
-func (q *Queries) ListOrders(ctx context.Context) ([]Order, error) {
-	rows, err := q.db.Query(ctx, listOrders)
+func (q *Queries) GetOrderByExternalID(ctx context.Context, externalID string) (Order, error) {
+	row := q.db.QueryRow(ctx, getOrderByExternalID, externalID)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.CustomerName,
+		&i.Phone,
+		&i.City,
+		&i.Street,
+		&i.Apartment,
+		&i.Floor,
+		&i.Doorphone,
+		&i.Building,
+		&i.Entrance,
+		&i.Comment,
+		&i.Cost,
+		&i.Status,
+		&i.Location,
+		&i.CreatedAt,
+		&i.ExternalID,
+	)
+	return i, err
+}
+
+const getOrdersByStatus = `-- name: GetOrdersByStatus :many
+SELECT id, customer_name, phone, city, street, apartment, floor, doorphone, building, entrance, comment, cost, status, location, created_at, external_id FROM orders
+WHERE status = $1
+ORDER BY created_at DESC
+`
+
+func (q *Queries) GetOrdersByStatus(ctx context.Context, status *string) ([]Order, error) {
+	rows, err := q.db.Query(ctx, getOrdersByStatus, status)
 	if err != nil {
 		return nil, err
 	}
@@ -104,16 +182,68 @@ func (q *Queries) ListOrders(ctx context.Context) ([]Order, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.CustomerName,
+			&i.Phone,
 			&i.City,
 			&i.Street,
 			&i.Apartment,
 			&i.Floor,
+			&i.Doorphone,
+			&i.Building,
 			&i.Entrance,
 			&i.Comment,
 			&i.Cost,
 			&i.Status,
 			&i.Location,
 			&i.CreatedAt,
+			&i.ExternalID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOrders = `-- name: ListOrders :many
+SELECT id, customer_name, phone, city, street, apartment, floor, doorphone, building, entrance, comment, cost, status, location, created_at, external_id FROM orders
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListOrdersParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListOrders(ctx context.Context, arg ListOrdersParams) ([]Order, error) {
+	rows, err := q.db.Query(ctx, listOrders, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Order
+	for rows.Next() {
+		var i Order
+		if err := rows.Scan(
+			&i.ID,
+			&i.CustomerName,
+			&i.Phone,
+			&i.City,
+			&i.Street,
+			&i.Apartment,
+			&i.Floor,
+			&i.Doorphone,
+			&i.Building,
+			&i.Entrance,
+			&i.Comment,
+			&i.Cost,
+			&i.Status,
+			&i.Location,
+			&i.CreatedAt,
+			&i.ExternalID,
 		); err != nil {
 			return nil, err
 		}
@@ -126,15 +256,72 @@ func (q *Queries) ListOrders(ctx context.Context) ([]Order, error) {
 }
 
 const updateOrder = `-- name: UpdateOrder :exec
-
-DELETE FROM orders
+UPDATE orders
+SET
+    customer_name = $2,
+    phone = $3,
+    city = $4,
+    street = $5,
+    apartment = $6,
+    floor = $7,
+    doorphone = $8,
+    building = $9,
+    entrance = $10,
+    comment = $11,
+    cost = $12,
+    location = point($13, $14)
 WHERE id = $1
 `
 
-// UPDATE orders
-// SET customer_name = $2, city = $4, street = $5, apartment = $6, floor = $7, entrance = $8, comment = $9, cost = $10, status = $11
-// WHERE id = $1;
-func (q *Queries) UpdateOrder(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, updateOrder, id)
+type UpdateOrderParams struct {
+	ID           int64          `json:"id"`
+	CustomerName string         `json:"customer_name"`
+	Phone        *string        `json:"phone"`
+	City         *string        `json:"city"`
+	Street       *string        `json:"street"`
+	Apartment    *string        `json:"apartment"`
+	Floor        *int32         `json:"floor"`
+	Doorphone    *string        `json:"doorphone"`
+	Building     *string        `json:"building"`
+	Entrance     *int32         `json:"entrance"`
+	Comment      *string        `json:"comment"`
+	Cost         pgtype.Numeric `json:"cost"`
+	Point        float64        `json:"point"`
+	Point_2      float64        `json:"point_2"`
+}
+
+func (q *Queries) UpdateOrder(ctx context.Context, arg UpdateOrderParams) error {
+	_, err := q.db.Exec(ctx, updateOrder,
+		arg.ID,
+		arg.CustomerName,
+		arg.Phone,
+		arg.City,
+		arg.Street,
+		arg.Apartment,
+		arg.Floor,
+		arg.Doorphone,
+		arg.Building,
+		arg.Entrance,
+		arg.Comment,
+		arg.Cost,
+		arg.Point,
+		arg.Point_2,
+	)
+	return err
+}
+
+const updateOrderStatus = `-- name: UpdateOrderStatus :exec
+UPDATE orders
+SET status = $2
+WHERE id = $1
+`
+
+type UpdateOrderStatusParams struct {
+	ID     int64   `json:"id"`
+	Status *string `json:"status"`
+}
+
+func (q *Queries) UpdateOrderStatus(ctx context.Context, arg UpdateOrderStatusParams) error {
+	_, err := q.db.Exec(ctx, updateOrderStatus, arg.ID, arg.Status)
 	return err
 }

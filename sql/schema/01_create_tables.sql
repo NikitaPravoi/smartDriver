@@ -3,16 +3,21 @@ create table orders
     id            bigint generated always as identity
         primary key,
     customer_name text      not null,
+    phone         text,
     city          text,
     street        text,
     apartment     text,
     floor         integer,
+    doorphone     text,
+    building      text,
     entrance      integer,
     comment       text,
     cost          numeric   not null,
     status        text,
     location      point     not null,
-    created_at    timestamp not null
+    created_at    timestamp not null,
+    external_id   text      not null
+        unique
 );
 
 create table organizations

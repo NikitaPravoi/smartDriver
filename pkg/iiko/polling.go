@@ -18,6 +18,10 @@ import (
 	"time"
 )
 
+const (
+	DeliveryByCourier = "DeliveryByCourier"
+)
+
 var (
 	OldRevision = errors.New("TOO_OLD_REVISION")
 )
@@ -34,9 +38,10 @@ type OrderPollingService struct {
 	queries    *db.Queries // sqlc generated queries
 	iikoClient *IikoClient
 	//centrifuge   *gocent.Client
-	pollInterval time.Duration
-	tokenCache   sync.Map // Cache for organization tokens
-	lastRevision sync.Map // Track last revision for each organization
+	pollInterval    time.Duration
+	tokenCache      sync.Map // Cache for organization tokens
+	lastRevision    sync.Map // Track last revision for each organization
+	organizationIds map[int64][]string
 }
 
 type AuthResponse struct {
@@ -74,13 +79,13 @@ type Address struct {
 			Name string `json:"name"`
 		} `json:"city"`
 	} `json:"street"`
-	Index    string `json:"index"`
-	House    string `json:"house"`
-	Building string `json:"building"`
-	Flat     string `json:"flat"`
-	Entrance string `json:"entrance"`
-	Floor    string `json:"floor"`
-	Comment  string `json:"comment"`
+	Index     string `json:"index"`
+	House     string `json:"house"`
+	Building  string `json:"building"`
+	Flat      string `json:"flat"`
+	Entrance  string `json:"entrance"`
+	Floor     string `json:"floor"`
+	Doorphone string `json:"doorphone"`
 }
 
 type Order struct {
@@ -99,7 +104,12 @@ type Order struct {
 			} `json:"coordinates"`
 			Address `json:"address"`
 		} `json:"deliveryPoint"`
-		Sum float64 `json:"sum"`
+		Phone     string  `json:"phone"`
+		Comment   string  `json:"comment"`
+		Sum       float64 `json:"sum"`
+		OrderType struct {
+			OrderServiceType string `json:"orderServiceType"`
+		} `json:"orderType"`
 	} `json:"order"`
 }
 
@@ -116,7 +126,8 @@ func NewOrderPollingService(
 		queries:    queries,
 		iikoClient: NewIikoClient("https://api-ru.iiko.services"),
 		//centrifuge:   gocent.New(centrifugeURL, gocent.WithAPIKey(centrifugeAPIKey)),
-		pollInterval: pollInterval,
+		pollInterval:    pollInterval,
+		organizationIds: make(map[int64][]string),
 	}
 }
 
@@ -162,11 +173,15 @@ func (s *OrderPollingService) pollOrganizationOrders(ctx context.Context, org db
 	if err != nil {
 		return fmt.Errorf("failed to get auth token: %w", err)
 	}
-	fmt.Println("Received auth token:", token)
 
-	orgs, err := s.iikoClient.GetOrganizationIds(ctx, token)
-	if err != nil {
-		return fmt.Errorf("failed to get organization ids: %w", err)
+	orgsIds, exists := s.organizationIds[org.ID]
+	if !exists {
+		newOrgsIds, err := s.iikoClient.GetOrganizationIds(ctx, token)
+		if err != nil {
+			return fmt.Errorf("failed to get organization ids: %w", err)
+		}
+		orgsIds = newOrgsIds
+		s.organizationIds[org.ID] = orgsIds
 	}
 
 	// Get last known revision
@@ -182,7 +197,7 @@ func (s *OrderPollingService) pollOrganizationOrders(ctx context.Context, org db
 			lastRevId = lastRevFromDB
 		} else {
 			// If no revision in DB, fetch initial revision
-			initialRev, err := s.iikoClient.GetInitialRevision(ctx, token, orgs)
+			initialRev, err := s.iikoClient.GetInitialRevision(ctx, token, orgsIds)
 			if err != nil {
 				return fmt.Errorf("failed to get initial revision: %w", err)
 			}
@@ -205,10 +220,10 @@ func (s *OrderPollingService) pollOrganizationOrders(ctx context.Context, org db
 
 	// Fetch orders since last revision
 GettingOrders:
-	orders, maxRevision, err := s.iikoClient.GetOrdersByRevision(ctx, token, orgs, lastRevId)
+	orders, maxRevision, err := s.iikoClient.GetOrdersByRevision(ctx, token, orgsIds, lastRevId)
 	if err != nil {
 		if errors.Is(err, OldRevision) {
-			initialRev, err := s.iikoClient.GetInitialRevision(ctx, token, orgs)
+			initialRev, err := s.iikoClient.GetInitialRevision(ctx, token, orgsIds)
 			if err != nil {
 				return fmt.Errorf("failed to get initial revision: %w", err)
 			}
@@ -272,6 +287,17 @@ func (s *OrderPollingService) processOrders(ctx context.Context, orders []Order)
 	qtx := s.queries.WithTx(tx)
 
 	for _, order := range orders {
+		// Skip the order if it's not a delivery
+		if order.Info.OrderType.OrderServiceType != DeliveryByCourier {
+			continue
+		}
+
+		// Try to get existing order first
+		existingOrder, err := qtx.GetOrderByExternalID(ctx, order.ID)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("failed to check existing order: %w", err)
+		}
+
 		cost := pgtype.Numeric{
 			Int:   big.NewInt(int64(order.Info.Sum)),
 			Exp:   0,
@@ -287,14 +313,67 @@ func (s *OrderPollingService) processOrders(ctx context.Context, orders []Order)
 
 		createdAt, _ := time.Parse("2006-01-02 15:04:05.000", order.Info.CreatedAt)
 
+		// If order exists, check if status has changed
+		if err == nil {
+			if *existingOrder.Status != order.Info.Status {
+				// Update order status
+				if err := qtx.UpdateOrderStatus(ctx, db.UpdateOrderStatusParams{
+					ID:     existingOrder.ID,
+					Status: &order.Info.Status,
+				}); err != nil {
+					return fmt.Errorf("failed to update order status: %w", err)
+				}
+
+				// Publish status change to Centrifugo
+				statusUpdate := OrderStatusUpdate{
+					OrderID:    existingOrder.ID,
+					ExternalID: order.ID,
+					OldStatus:  *existingOrder.Status,
+					NewStatus:  order.Info.Status,
+					UpdatedAt:  time.Now(),
+				}
+
+				if err := s.publishStatusUpdate(statusUpdate); err != nil {
+					return fmt.Errorf("failed to publish status update: %w", err)
+				}
+			}
+
+			// Update other order details if needed
+			if err := qtx.UpdateOrder(ctx, db.UpdateOrderParams{
+				ID:           existingOrder.ID,
+				CustomerName: strings.TrimSpace(order.Info.Customer.Name),
+				Phone:        &order.Info.Phone,
+				City:         &order.Info.DeliveryPoint.Address.Street.City.Name,
+				Street:       &order.Info.DeliveryPoint.Address.Street.Name,
+				Apartment:    &order.Info.DeliveryPoint.Address.Flat,
+				Doorphone:    &order.Info.DeliveryPoint.Address.Doorphone,
+				Building:     &order.Info.DeliveryPoint.Building,
+				Floor:        &floor,
+				Entrance:     &entrance,
+				Comment:      &order.Info.Comment,
+				Cost:         cost,
+				Point:        order.Info.DeliveryPoint.Coordinates.Longitude,
+				Point_2:      order.Info.DeliveryPoint.Coordinates.Latitude,
+			}); err != nil {
+				return fmt.Errorf("failed to update order: %w", err)
+			}
+
+			continue
+		}
+
+		// Create new order if it doesn't exist
 		params := db.CreateOrderParams{
+			ExternalID:   order.ID,
 			CustomerName: strings.TrimSpace(order.Info.Customer.Name),
+			Phone:        &order.Info.Phone,
 			City:         &order.Info.DeliveryPoint.Address.Street.City.Name,
 			Street:       &order.Info.DeliveryPoint.Address.Street.Name,
 			Apartment:    &order.Info.DeliveryPoint.Address.Flat,
+			Doorphone:    &order.Info.DeliveryPoint.Address.Doorphone,
+			Building:     &order.Info.DeliveryPoint.Building,
 			Floor:        &floor,
 			Entrance:     &entrance,
-			Comment:      &order.Info.DeliveryPoint.Comment,
+			Comment:      &order.Info.Comment,
 			Cost:         cost,
 			Status:       &order.Info.Status,
 			Point:        order.Info.DeliveryPoint.Coordinates.Longitude,
@@ -302,13 +381,63 @@ func (s *OrderPollingService) processOrders(ctx context.Context, orders []Order)
 			CreatedAt:    pgtype.Timestamp{Time: createdAt, Valid: true},
 		}
 
-		if _, err := qtx.CreateOrder(ctx, params); err != nil {
+		newOrder, err := qtx.CreateOrder(ctx, params)
+		if err != nil {
 			return fmt.Errorf("failed to create order: %w", err)
 		}
-		fmt.Println("Created order:", order)
+
+		// Publish new order creation to Centrifugo
+		if err := s.publishNewOrder(newOrder); err != nil {
+			return fmt.Errorf("failed to publish new order: %w", err)
+		}
+
+		fmt.Println("Created new order:", order)
 	}
 
 	return tx.Commit(ctx)
+}
+
+type OrderStatusUpdate struct {
+	OrderID    int64     `json:"order_id"`
+	ExternalID string    `json:"external_id"`
+	OldStatus  string    `json:"old_status"`
+	NewStatus  string    `json:"new_status"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+func (s *OrderPollingService) publishStatusUpdate(update OrderStatusUpdate) error {
+	data, err := json.Marshal(update)
+	if err != nil {
+		return fmt.Errorf("failed to marshal status update: %w", err)
+	}
+
+	// Publish to status updates channel
+	channel := fmt.Sprintf("order_status_updates:%d", update.OrderID)
+	//if err := s.centrifuge.Publish(context.Background(), channel, data); err != nil {
+	//	return fmt.Errorf("failed to publish to centrifugo: %w", err)
+	//}
+
+	fmt.Println("New order:", data)
+	fmt.Println("Publishing:", channel)
+
+	return nil
+}
+
+func (s *OrderPollingService) publishNewOrder(order db.Order) error {
+	//data, err := json.Marshal(order)
+	//if err != nil {
+	//	return fmt.Errorf("failed to marshal new order: %w", err)
+	//}
+
+	// Publish to new orders channel
+	channel := "new_orders"
+	//if err := s.centrifuge.Publish(context.Background(), channel, data); err != nil {
+	//	return fmt.Errorf("failed to publish to centrifugo: %w", err)
+	//}
+	fmt.Println("New order:", order)
+	fmt.Println("Publishing:", channel)
+
+	return nil
 }
 
 // publishUpdates sends order updates to Centrifugo
@@ -326,23 +455,6 @@ func (s *OrderPollingService) publishUpdates(orders []Order) error {
 	//	}
 	//}
 	return nil
-}
-
-// Helper function to map iiko status to internal status code
-func getStatusCode(status string) int32 {
-	statusMap := map[string]int32{
-		"Unconfirmed":      0,
-		"WaitCooking":      1,
-		"ReadyForCooking":  2,
-		"CookingStarted":   3,
-		"CookingCompleted": 4,
-		"Waiting":          5,
-		"OnWay":            6,
-		"Delivered":        7,
-		"Closed":           8,
-		"Cancelled":        9,
-	}
-	return statusMap[status]
 }
 
 // IikoClient implementation methods

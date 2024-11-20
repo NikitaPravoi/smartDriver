@@ -18,16 +18,20 @@ type Branch struct {
 type Order struct {
 	ID           int64            `json:"id"`
 	CustomerName string           `json:"customer_name"`
+	Phone        *string          `json:"phone"`
 	City         *string          `json:"city"`
 	Street       *string          `json:"street"`
 	Apartment    *string          `json:"apartment"`
 	Floor        *int32           `json:"floor"`
+	Doorphone    *string          `json:"doorphone"`
+	Building     *string          `json:"building"`
 	Entrance     *int32           `json:"entrance"`
 	Comment      *string          `json:"comment"`
 	Cost         pgtype.Numeric   `json:"cost"`
 	Status       *string          `json:"status"`
 	Location     pgtype.Point     `json:"location"`
 	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	ExternalID   string           `json:"external_id"`
 }
 
 type Organization struct {
