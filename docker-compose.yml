@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-smartdriver}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-smartdriver}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smartdriver_net
+
+  centrifugo:
+    image: centrifugo/centrifugo:v5
+    environment:
+      CENTRIFUGO_TOKEN_HMAC_SECRET_KEY: ${CENTRIFUGO_TOKEN_SECRET:-your-secret-key}
+      CENTRIFUGO_ADMIN_PASSWORD: ${CENTRIFUGO_ADMIN_PASSWORD:-admin}
+      CENTRIFUGO_ADMIN_SECRET: ${CENTRIFUGO_ADMIN_SECRET:-admin-secret}
+      CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:-api-key}
+      CENTRIFUGO_PORT: ${CENTRIFUGO_PORT:-8000}
+      CENTRIFUGO_ALLOWED_ORIGINS: "*"
+    volumes:
+      - ./config/centrifugo.json:/centrifugo/config.json
+    ports:
+      - "${CENTRIFUGO_PORT:-8000}:8000"
+    command: centrifugo --config=/centrifugo/config.json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${CENTRIFUGO_PORT:-8000}/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smartdriver_net
+
+  server:
+    build:
+      context: .
+      dockerfile: build/server/Dockerfile
+      args:
+        APP_ENV: ${APP_ENV:-development}
+    environment:
+      # Server configuration
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      SERVER_HOST: ${SERVER_HOST:-0.0.0.0}
+      SERVER_READ_TIMEOUT: ${SERVER_READ_TIMEOUT:-15s}
+      SERVER_WRITE_TIMEOUT: ${SERVER_WRITE_TIMEOUT:-15s}
+      APP_ENV: ${APP_ENV:-development}
+
+      # Database configuration
+      DB_HOST: postgres
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-smartdriver}
+      DB_SSLMODE: ${DB_SSLMODE:-disable}
+
+      # Centrifugo configuration
+      CENTRIFUGO_URL: ${CENTRIFUGO_URL:-http://centrifugo:8000}
+      CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:-api-key}
+      CENTRIFUGO_TOKEN_SECRET: ${CENTRIFUGO_TOKEN_SECRET:-your-secret-key}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      centrifugo:
+        condition: service_healthy
+    networks:
+      - smartdriver_net
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    volumes:
+      - ./logs:/app/logs
+
+  parser:
+    build:
+      context: .
+      dockerfile: build/parser/Dockerfile
+      args:
+        APP_ENV: ${APP_ENV:-development}
+    environment:
+      # Parser configuration
+      PARSER_POLLING_INTERVAL: ${PARSER_POLLING_INTERVAL:-30s}
+      PARSER_BATCH_SIZE: ${PARSER_BATCH_SIZE:-100}
+      PARSER_WORKER_COUNT: ${PARSER_WORKER_COUNT:-5}
+      APP_ENV: ${APP_ENV:-development}
+
+      # Database configuration
+      DB_HOST: postgres
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-smartdriver}
+      DB_SSLMODE: ${DB_SSLMODE:-disable}
+
+      # Centrifugo configuration
+      CENTRIFUGO_URL: ${CENTRIFUGO_URL:-http://centrifugo:8000}
+      CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:-api-key}
+      CENTRIFUGO_TOKEN_SECRET: ${CENTRIFUGO_TOKEN_SECRET:-your-secret-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      centrifugo:
+        condition: service_healthy
+    networks:
+      - smartdriver_net
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    volumes:
+      - ./logs:/app/logs
+
+networks:
+  smartdriver_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

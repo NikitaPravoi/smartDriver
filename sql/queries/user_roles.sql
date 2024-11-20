@@ -5,9 +5,6 @@ VALUES ($1, $2) RETURNING *;
 -- name: ListUserRoles :many
 SELECT * FROM user_roles;
 
--- name: GetUserRoles :many
-SELECT * FROM user_roles WHERE user_id = $1;
-
 -- name: GetUsersByRole :many
 SELECT * FROM user_roles WHERE role_id = $1;
 

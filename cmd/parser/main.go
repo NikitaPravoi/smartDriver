@@ -2,28 +2,32 @@ package main
 
 import (
 	"context"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"fmt"
 	"log"
+	"smartDriver/internal/config"
 	"smartDriver/internal/db"
 	"smartDriver/pkg/iiko"
 	"time"
 )
 
 func main() {
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	ctx := context.Background()
 
-	pool, err := pgxpool.New(ctx, "postgres://postgres:1234qwerASDF@localhost:5432/smart_driver?sslmode=disable")
-	if err != nil {
-		log.Fatalf("failed to create postgresql pool: %v", err)
+	if err := db.InitConnection(cfg); err != nil {
+		fmt.Errorf("failed to init database connection: %v", err)
 	}
-	queries := db.New(pool)
 
 	service := iiko.NewOrderPollingService(
-		pool,
-		queries,
+		db.Pool,
+		db.Repository,
 		"http://localhost:8000", // Centrifugo URL
 		"your-api-key",          // Centrifugo API key
-		time.Second*10,          // Poll interval
+		time.Second*60,          // Poll interval
 	)
 
 	if err := service.Start(ctx); err != nil {

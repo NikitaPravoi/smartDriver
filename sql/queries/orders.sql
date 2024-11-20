@@ -63,3 +63,29 @@ WHERE status = $1;
 -- name: GetOrderByExternalID :one
 SELECT * FROM orders
 WHERE external_id = $1;
+
+-- name: GetUnboundOrders :many
+SELECT o.*
+FROM orders o
+         LEFT JOIN rides_to_orders rto ON rto.order_id = o.id
+WHERE rto.ride_id IS NULL
+  AND (o.status = $1)
+  AND (o.created_at >= $2)
+  AND (o.created_at <= $3)
+ORDER BY o.created_at DESC
+LIMIT $4 OFFSET $5;
+
+-- name: CountUnboundOrders :one
+SELECT COUNT(*)
+FROM orders o
+         LEFT JOIN rides_to_orders rto ON rto.order_id = o.id
+WHERE rto.ride_id IS NULL
+  AND (o.status = $1)
+  AND (o.created_at >= $2)
+  AND (o.created_at <= $3);
+
+-- name: GetOrderStatuses :many
+SELECT DISTINCT status
+FROM orders
+WHERE status IS NOT NULL
+ORDER BY status;

@@ -13,8 +13,8 @@ var (
 
 func MustInit(cfg *config.Config) {
 	var err error
-	switch cfg.Logger.Level {
-	case "debug":
+	switch cfg.Server.Environment {
+	case "development":
 		Logger, err = zap.NewDevelopment()
 	case "production":
 		Logger, err = zap.NewProduction()

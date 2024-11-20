@@ -1,6 +1,6 @@
 -- name: CreateOrganization :one
-INSERT INTO organizations (name, balance, iiko_api_token)
-    VALUES ($1, $2, $3) RETURNING *;
+INSERT INTO organizations (name, iiko_api_token)
+    VALUES ($1, $2) RETURNING *;
 
 -- name: ListOrganizations :many
 SELECT * FROM organizations;
@@ -20,3 +20,17 @@ WHERE id = $1;
 
 -- name: GetOrganizationsApiTokens :many
 SELECT iiko_api_token FROM organizations WHERE balance > 0;
+
+-- name: DeleteOrganizationUsers :exec
+DELETE FROM users
+WHERE organization_id = $1;
+
+-- name: DeleteOrganizationBranches :exec
+DELETE FROM branches
+WHERE organization_id = $1;
+
+-- Query to check organization existence before operations
+-- name: CheckOrganizationExists :one
+SELECT EXISTS(
+    SELECT 1 FROM organizations WHERE id = $1
+) AS exists;

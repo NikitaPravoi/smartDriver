@@ -1,0 +1,16 @@
+{
+  "token_hmac_secret_key": "your-secret-key",
+  "admin_password": "admin",
+  "admin_secret": "admin-secret",
+  "api_key": "api-key",
+  "allowed_origins": ["*"],
+  "port": 8000,
+  "engine": "redis",
+  "namespaces": [
+    {
+      "name": "orders",
+      "history_size": 100,
+      "history_ttl": "600s"
+    }
+  ]
+}

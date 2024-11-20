@@ -28,7 +28,7 @@ type planOut struct {
 }
 
 func CreatePlan(ctx context.Context, in *createPlanIn) (*planOut, error) {
-	plan, err := db.Pool.CreatePlan(ctx, db.CreatePlanParams{
+	plan, err := db.Repository.CreatePlan(ctx, db.CreatePlanParams{
 		Name: in.Body.Name,
 		// FIXME: this shit write in db without decimal part LOL
 		Cost: pgtype.Numeric{
@@ -59,7 +59,7 @@ func CreatePlan(ctx context.Context, in *createPlanIn) (*planOut, error) {
 }
 
 func GetPlan(ctx context.Context, in *idPathIn) (*planOut, error) {
-	plan, err := db.Pool.GetPlan(ctx, in.ID)
+	plan, err := db.Repository.GetPlan(ctx, in.ID)
 	if err != nil {
 		log.SugaredLogger.Errorf("failed to get plan: %v", err)
 		return nil, huma.Error500InternalServerError("failed to get plan", err)
@@ -89,7 +89,7 @@ type updatePlanIn struct {
 }
 
 func UpdatePlan(ctx context.Context, in *updatePlanIn) (*planOut, error) {
-	plan, err := db.Pool.UpdatePlan(ctx, db.UpdatePlanParams{
+	plan, err := db.Repository.UpdatePlan(ctx, db.UpdatePlanParams{
 		ID:   in.ID,
 		Name: in.Body.Name,
 		Cost: pgtype.Numeric{
@@ -120,7 +120,7 @@ func UpdatePlan(ctx context.Context, in *updatePlanIn) (*planOut, error) {
 }
 
 func DeletePlan(ctx context.Context, in *idPathIn) (*successOut, error) {
-	if err := db.Pool.DeletePlan(ctx, in.ID); err != nil {
+	if err := db.Repository.DeletePlan(ctx, in.ID); err != nil {
 		log.SugaredLogger.Errorf("failed to delete plan: %v", err)
 		return nil, huma.Error500InternalServerError("failed to delete plan", err)
 	}
@@ -138,7 +138,7 @@ type listPlansOut struct {
 }
 
 func ListPlans(ctx context.Context, in *listIn) (*listPlansOut, error) {
-	plans, err := db.Pool.ListPlans(ctx)
+	plans, err := db.Repository.ListPlans(ctx)
 	if err != nil {
 		log.SugaredLogger.Errorf("failed to list plans: %v", err)
 		return nil, huma.Error500InternalServerError("failed to list plans", err)
