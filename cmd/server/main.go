@@ -1,8 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
-	"smartDriver/internal/handlers"
+	"smartDriver/internal/config"
+	"smartDriver/internal/db"
+	httptransport "smartDriver/internal/transport/http"
+	"smartDriver/pkg/log"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
@@ -11,49 +15,21 @@ import (
 	_ "github.com/danielgtaylor/huma/v2/formats/cbor"
 )
 
-var api huma.API
-
 func main() {
+	cfg := config.MustLoad()
+
+	log.MustInit(cfg)
+
+	if err := db.InitConnection(cfg); err != nil {
+		log.SugaredLogger.Errorf("failed to init database connection: %v", err)
+	}
+
 	router := chi.NewMux()
-	api = humachi.New(router, huma.DefaultConfig("SmartDriver", "0.0.1"))
+	api := humachi.New(router, huma.DefaultConfig("SmartDriver", "0.0.1"))
+	httptransport.Register(api)
 
-	huma.Register(api, huma.Operation{
-		OperationID:   "create-user",
-		Method:        http.MethodPost,
-		Path:          "/user",
-		Summary:       "Create a user",
-		Description:   "Creating user and returning state of creation",
-		Tags:          []string{"Authorization"},
-		DefaultStatus: http.StatusCreated,
-	}, handlers.CreateUserHandler)
-	huma.Register(api, huma.Operation{
-		OperationID:   "login",
-		Method:        http.MethodPost,
-		Path:          "/login",
-		Summary:       "Log in",
-		Description:   "Logging in",
-		Tags:          []string{"Authorization"},
-		DefaultStatus: http.StatusOK,
-	}, handlers.LoginHandler)
-	huma.Register(api, huma.Operation{
-		OperationID:   "logout",
-		Method:        http.MethodGet,
-		Path:          "/logout",
-		Summary:       "Log out",
-		Description:   "Logging out",
-		Tags:          []string{"Authorization"},
-		DefaultStatus: http.StatusOK,
-	}, handlers.LogoutHandler)
-	huma.Register(api, huma.Operation{
-		OperationID:   "refresh-token",
-		Method:        http.MethodPost,
-		Path:          "/refresh-token",
-		Summary:       "Refresh token",
-		Description:   "Refreshing session token expiry",
-		Tags:          []string{"Authorization"},
-		DefaultStatus: http.StatusCreated,
-	}, handlers.RefreshTokenHandler)
-
-	// Start the server!
-	http.ListenAndServe(":8888", router)
+	log.SugaredLogger.Infof("HTTP server is listening on %s:%s", cfg.HTTP.Host, cfg.HTTP.Port)
+	if err := http.ListenAndServe(fmt.Sprintf(":%s", cfg.HTTP.Port), router); err != nil {
+		log.SugaredLogger.Fatalf("failed to listen given address: %v", err)
+	}
 }

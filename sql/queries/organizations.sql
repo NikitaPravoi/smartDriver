@@ -8,10 +8,11 @@ SELECT * FROM organizations;
 -- name: GetOrganization :one
 SELECT * FROM organizations WHERE id = $1;
 
--- name: UpdateOrganization :exec
+-- name: UpdateOrganization :one
 UPDATE organizations
 SET name = $2, balance = $3, iiko_api_token = $4
-WHERE id = $1;
+WHERE id = $1
+RETURNING *;
 
 -- name: DeleteOrganization :exec
 DELETE FROM organizations

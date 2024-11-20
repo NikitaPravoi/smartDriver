@@ -1,0 +1,11 @@
+http:
+  port: "8000"
+  host: "localhost"
+postgres:
+  user: "postgres"
+  password: "postgres"
+  port: "5432"
+  host: "localhost"
+  name: "smart_driver"
+logger:
+  level: "debug"

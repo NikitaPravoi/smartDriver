@@ -8,10 +8,11 @@ SELECT * FROM plans;
 -- name: GetPlan :one
 SELECT * FROM plans WHERE id = $1;
 
--- name: UpdatePlan :exec
+-- name: UpdatePlan :one
 UPDATE plans
 SET name = $2, cost = $3, employee_limit = $4
-WHERE id = $1;
+WHERE id = $1
+RETURNING *;
 
 -- name: DeletePlan :exec
 DELETE FROM plans
